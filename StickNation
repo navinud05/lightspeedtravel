@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Olympic Peninsula Overland Trip — June 18-22, 2026</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', -apple-system, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        .hero {
+            background: linear-gradient(135deg, #0f3443 0%, #34e89e22 100%),
+                        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff11" d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,181.3C960,203,1056,213,1152,197.3C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
+            padding: 60px 40px;
+            text-align: center;
+            border-bottom: 3px solid #34e89e;
+        }
+        .hero h1 {
+            font-size: 2.8rem;
+            color: #fff;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .hero .subtitle {
+            font-size: 1.2rem;
+            color: #34e89e;
+            font-weight: 300;
+        }
+        .hero .dates {
+            margin-top: 15px;
+            font-size: 1rem;
+            color: #aaa;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 0;
+            background: #16213e;
+            border-radius: 12px 12px 0 0;
+            padding: 8px 8px 0;
+            overflow: hidden;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 16px 24px;
+            background: #1a1a2e;
+            border: none;
+            color: #888;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            background: #0f3443;
+            color: #34e89e;
+            box-shadow: 0 -2px 10px rgba(52,232,158,0.2);
+        }
+        .tab-btn:hover:not(.active) { color: #ccc; background: #1e2a4a; }
+
+        .tab-content { display: none; background: #0f3443; border-radius: 0 0 12px 12px; padding: 30px; }
+        .tab-content.active { display: block; }
+
+        /* Route Overview */
+        .route-overview {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .route-stat {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 15px 20px;
+            border-left: 3px solid #34e89e;
+        }
+        .route-stat label { font-size: 0.8rem; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+        .route-stat .value { font-size: 1.3rem; color: #fff; font-weight: 600; margin-top: 4px; }
+
+        /* Map Container */
+        .map-container {
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 25px 0;
+            border: 2px solid #34e89e33;
+            height: 450px;
+        }
+
+        /* Day Cards */
+        .day-card {
+            background: #16213e;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            overflow: hidden;
+            border: 1px solid #ffffff11;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .day-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .day-header {
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #1a2540 0%, #16213e 100%);
+        }
+        .day-number {
+            background: #34e89e;
+            color: #0f3443;
+            font-weight: 800;
+            font-size: 1.4rem;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .day-title h3 { color: #fff; font-size: 1.2rem; }
+        .day-title .route-text { color: #34e89e; font-size: 0.9rem; margin-top: 3px; }
+        .day-meta {
+            margin-left: auto;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .day-meta .drive-time {
+            background: #34e89e22;
+            color: #34e89e;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .day-meta .distance {
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+        .day-body { padding: 0 25px 25px; }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin: 20px 0;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 5px;
+            bottom: 5px;
+            width: 2px;
+            background: linear-gradient(to bottom, #34e89e, #0f3443);
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 18px;
+            padding-left: 15px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -26px;
+            top: 8px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #34e89e;
+            border: 2px solid #0f3443;
+        }
+        .timeline-item.camp::before { background: #f39c12; border-color: #f39c12; width: 12px; height: 12px; left: -27px; }
+        .timeline-time {
+            font-size: 0.8rem;
+            color: #34e89e;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .timeline-title { color: #fff; font-weight: 600; margin: 3px 0; }
+        .timeline-desc { color: #aaa; font-size: 0.9rem; }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 5px;
+        }
+        .tag-ocean { background: #0077b622; color: #4fc3f7; border: 1px solid #4fc3f744; }
+        .tag-forest { background: #2e7d3222; color: #81c784; border: 1px solid #81c78444; }
+        .tag-mountain { background: #5c6bc022; color: #9fa8da; border: 1px solid #9fa8da44; }
+        .tag-camp { background: #f57c0022; color: #ffb74d; border: 1px solid #ffb74d44; }
+
+        /* Camp Box */
+        .camp-box {
+            background: #f39c1211;
+            border: 1px solid #f39c1244;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-top: 15px;
+        }
+        .camp-box h4 { color: #f39c12; font-size: 0.9rem; margin-bottom: 8px; }
+        .camp-box .primary { color: #fff; font-weight: 600; }
+        .camp-box .backup { color: #888; font-size: 0.85rem; margin-top: 5px; }
+        .camp-box .coords {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: #34e89e;
+            margin-top: 5px;
+        }
+
+        /* Directions Link */
+        .directions-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #34e89e22;
+            color: #34e89e;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        .directions-link:hover { background: #34e89e33; }
+
+        /* Gear Section */
+        .gear-section {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 40px;
+        }
+        .gear-section h2 { color: #34e89e; margin-bottom: 20px; }
+        .gear-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .gear-category h4 { color: #fff; margin-bottom: 8px; font-size: 0.95rem; }
+        .gear-category ul { list-style: none; padding: 0; }
+        .gear-category li { color: #aaa; font-size: 0.85rem; padding: 3px 0; padding-left: 15px; position: relative; }
+        .gear-category li::before { content: '▸'; position: absolute; left: 0; color: #34e89e; }
+
+        /* Notes */
+        .notes-box {
+            background: #f39c1211;
+            border-left: 3px solid #f39c12;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        .notes-box h4 { color: #f39c12; margin-bottom: 8px; }
+        .notes-box p, .notes-box li { color: #ccc; font-size: 0.9rem; }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 1.8rem; }
+            .route-overview { grid-template-columns: 1fr; }
+            .day-header { flex-wrap: wrap; }
+            .day-meta { margin-left: 0; margin-top: 10px; text-align: left; }
+            .tab-btn { font-size: 0.85rem; padding: 12px 10px; }
+            .map-container { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="hero">
+    <h1>🏔️ Olympic Peninsula Overland</h1>
+    <div class="subtitle">Rainforest · Ocean · Mountains — A 5-Day Loop</div>
+    <div class="dates">June 18–22, 2026 · Seattle + Portland Convergence</div>
+</div>
+
+<div class="container">
+
+<!-- Tab Navigation -->
+<div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('optionA')">Option A: Counter-Clockwise</button>
+    <button class="tab-btn" onclick="switchTab('optionB')">Option B: Clockwise</button>
+</div>
+
+<!-- ==================== OPTION A ==================== -->
+<div class="tab-content active" id="optionA">
+    <h2 style="color:#34e89e; margin-bottom:5px;">Option A — Rainforest → Ocean → Mountains</h2>
+    <p style="color:#aaa; margin-bottom:25px;">South-to-north arc. Meet at Quinault, end at Port Angeles. Builds from lush valleys to alpine vistas.</p>
+
+    <div class="route-overview">
+        <div class="route-stat"><label>Total Driving</label><div class="value">~8.5 hours over 4 days</div></div>
+        <div class="route-stat"><label>Total Distance</label><div class="value">~320 miles (loop)</div></div>
+        <div class="route-stat"><label>Max Single Day</label><div class="value">~3 hrs (Day 4)</div></div>
+        <div class="route-stat"><label>Dispersed Sites</label><div class="value">4 nights, 3 areas</div></div>
+    </div>
+
+    <div class="map-container" id="mapA"></div>
+
+    <!-- Day 1 -->
+    <div class="day-card">
+        <div class="day-header">
+            <div class="day-number">1</div>
+            <div class="day-title">
+                <h3>Converge on Quinault Rainforest</h3>
+                <div class="route-text">Seattle → Quinault &nbsp;|&nbsp; Portland → Quinault</div>
+            </div>
+            <div class="day-meta">
+                <div class="drive-time">🚗 ~3–3.5 hrs</div>
+                <div class="distance">Seattle: 145mi / Portland: 175mi</div>
+            </div>
+        </div>
+        <div class="day-body">
+            <div style="margin-bottom:10px;">
+                <span class="tag tag-forest">🌲 Rainforest</span>
+            </div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">~Noon</div>
+                    <div class="timeline-title">Depart</div>
+                    <div class="timeline-desc">Seattle via I-5 south → US-12 west → US-101 south. Portland via I-5 north → US-12 west → US-101 south (or US-101 north along coast).</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">~3:00 PM</div>
+                    <div class="timeline-title">Arrive Lake Quinault Area</div>
+                    <div class="timeline-desc">Rendezvous at the Quinault Rain Forest Ranger Station or Lake Quinault Lodge parking area.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">3:30–5:30 PM</div>
+                    <div class="timeline-title">Quinault Rain Forest Loop</div>
+                    <div class="timeline-desc"><strong>Rainforest Nature Trail (0.5mi)</strong> or <strong>Maple Glade Trail (0.5mi)</strong> — easy moss-draped old-growth walks. For more: <strong>Graves Creek Trail</strong> (out-and-back, go as far as time allows).</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">5:30 PM</div>
+                    <div class="timeline-title">Grab firewood & supplies</div>
+                    <div class="timeline-desc">Last gas/supplies in Amanda Park (US-101 & South Shore Rd intersection). Firewood often available at ranger station or roadside.</div>
+                </div>
+                <div class="timeline-item camp">
+                    <div class="timeline-time">6:00 PM</div>
+                    <div class="timeline-title">Make Camp</div>
+                    <div class="timeline-desc">Head up South Shore Road. Dispersed pulloffs begin ~2 miles past Gatton Creek Campground. River-adjacent, flat sites under conifers.</div>
+                </div>
+            </div>
+
+            <div class="camp-box">
+                <h4>🏕️ Night 1 Camp</h4>
+                <div class="primary">Dispersed — South Shore Road / NF-2292 pulloffs</div>
+                <div class="backup">Backup: Gatton Creek Campground (first-come, $20/night, vault toilet)</div>
+                <div class="coords">📍 ~47.455, -123.735 (general area along South Shore Rd)</div>
+            </div>
+
+            <a class="directions-link" href="https://www.google.com/maps/dir/Seattle,+WA/Lake+Quinault+Lodge,+345+South+Shore+Road,+Quinault,+WA" target="_blank">📍 Google Maps: Seattle → Quinault</a>
+            <a class="directions-link" href="https://www.google.com/maps/dir/Portland,+OR/Lake+Quinault+Lodge,+345+South+Shore+Road,+Quinault,+WA" target="_blank">📍 Google Maps: Portland → Quinault</a>
+        </div>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="day-card">
+        <div class="day-header">
+            <div class="day-number">2</div>
+            <div class="day-title">
+                <h3>Coastal Beaches — Kalaloch to Forks</h3>
+                <div class="route-text">Quinault → Kalaloch → Ruby Beach → Forks</div>
+            </div>
+            <div class="day-meta">
+                <div class="drive-time">🚗 ~2 hrs total</div>
+                <div class="distance">~75 miles</div>
+            </div>
+        </div>
+        <div class="day-body">
+            <div style="margin-bottom:10px;">
+                <span class="tag tag-ocean">🌊 Ocean</span>
+            </div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">~Noon</div>
+                    <div class="timeline-title">Break Camp → Head North on US-101</div>
+                    <div class="timeline-desc">Quick 30-min drive from South Shore Road back to US-101 northbound.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">12:30 PM</div>
+                    <div class="timeline-title">Kalaloch Beach — Beach 4</div>
+                    <div class="timeline-desc">Short trail to a wild driftwood-strewn beach. Sea stacks, tide pools (check tide tables — low tide is ideal). Easy 0.5mi walk.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">2:00 PM</div>
+                    <div class="timeline-title">Ruby Beach</div>
+                    <div class="timeline-desc">The crown jewel. Sea stacks, Abbey Island, crashing surf. 0.2mi trail to beach. Spend 1-2 hours exploring. Best photos at any time with overcast skies.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">3:30 PM</div>
+                    <div class="timeline-title">Optional: Beach 3 or Destruction Island Viewpoint</div>
+                    <div class="timeline-desc">Quick pulloffs along 101. Destruction Island viewpoint has whale-watching potential in June (gray whales).</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">4:30 PM</div>
+                    <div class="timeline-title">Continue to Forks — Resupply</div>
+                    <div class="timeline-desc">Forks is the last real town for supplies. Thriftway grocery, gas stations. Stock up for 2 nights.</div>
+                </div>
+                <div class="timeline-item camp">
+                    <div class="timeline-time">5:30 PM</div>
+                    <div class="timeline-title">Make Camp</div>
+                    <div class="timeline-desc">East of Forks on Sitkum-Sol Duc Road → FS-29. Multiple established dispersed pulloffs in first 5 miles. Flat, forested, truck-friendly.</div>
+                </div>
+            </div>
+
+            <div class="camp-box">
+                <h4>🏕️ Night 2 Camp</h4>
+                <div class="primary">Dispersed — FS-29 (Forest Service Road 29), east of Forks</div>
+                <div class="backup">Backup: Bogachiel State Park ($25/night, first-come) or Mora Campground (NPS, $20)</div>
+                <div class="coords">📍 ~47.92, -124.22 (FS-29 pulloffs, first 5mi)</div>
+            </div>
+
+            <a class="directions-link" href="https://www.google.com/maps/dir/Lake+Quinault,+WA/Ruby+Beach,+WA/Forks,+WA" target="_blank">📍 Google Maps: Quinault → Ruby Beach → Forks</a>
+        </div>
+    </div>
+
+    <!-- Day 3 -->
+    <div class="day-card">
+        <div class="day-header">
+            <div class="day-number">3</div>
+            <div class="day-title">
+                <h3>Hoh Rainforest & Rialto Beach</h3>
+                <div class="route-text">Forks → Hoh → Rialto Beach → back to Forks</div>
+            </div>
+            <div class="day-meta">
+                <div class="drive-time">🚗 ~1.5 hrs total</div>
+                <div class="distance">~55 miles (loop from camp)</div>
+            </div>
+        </div>
+        <div class="day-body">
+            <div style="margin-bottom:10px;">
+                <span class="tag tag-forest">🌲 Rainforest</span>
+                <span class="tag tag-ocean">🌊 Ocean</span>
+            </div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">~Noon</div>
+                    <div class="timeline-title">Drive to Hoh Rain Forest Visitor Center</div>
+                    <div class="timeline-desc">~45min from FS-29 camp. Take Upper Hoh Road (18mi into the park). Entry fee: $30/vehicle or NPS pass.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">1:00 PM</div>
+                    <div class="timeline-title">Hall of Mosses Trail (0.8mi loop)</div>
+                    <div class="timeline-desc">The iconic Olympic experience. Massive bigleaf maples draped in club moss, towering Sitka spruce. Flat, easy, otherworldly. 30-45 minutes.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">2:00 PM</div>
+                    <div class="timeline-title">Spruce Nature Trail (1.2mi loop)</div>
+                    <div class="timeline-desc">Loops along the Hoh River. Ancient spruce groves, elk sightings common (especially in meadows near the river). 45 minutes.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">3:00 PM</div>
+                    <div class="timeline-title">Drive to Rialto Beach</div>
+                    <div class="timeline-desc">Back to US-101 → La Push Road → Mora Road. ~1hr from Hoh. Dramatic approach through coastal forest.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">4:00 PM</div>
+                    <div class="timeline-title">Rialto Beach → Hole-in-the-Wall</div>
+                    <div class="timeline-desc"><strong>1.5mi one-way beach hike</strong> to the famous sea arch. Stunning at any tide, but passable only at low-mid tide. Check tide chart! Driftwood scrambling. Allow 2 hours round trip.</div>
+                </div>
+                <div class="timeline-item camp">
+                    <div class="timeline-time">6:30 PM</div>
+                    <div class="timeline-title">Return to FS-29 Camp</div>
+                    <div class="timeline-desc">~30min back from Rialto. Same campsite as Night 2 — no need to break down.</div>
+                </div>
+            </div>
+
+            <div class="camp-box">
+                <h4>🏕️ Night 3 Camp</h4>
+                <div class="primary">Dispersed — FS-29 (same site as Night 2)</div>
+                <div class="backup">No need to move — settled for two nights.</div>
+                <div class="coords">📍 ~47.92, -124.22</div>
+            </div>
+
+            <a class="directions-link" href="https://www.google.com/maps/dir/Forks,+WA/Hoh+Rain+Forest+Visitor+Center,+WA/Rialto+Beach,+WA/Forks,+WA" target="_blank">📍 Google Maps: Day 3 Loop</a>
+        </div>
+    </div>
+
+    <!-- Day 4 -->
+    <div class="day-card">
+        <div class="day-header">
+            <div class="day-number">4</div>
+            <div class="day-title">
+                <h3>Hurricane Ridge — Alpine Day</h3>
+                <div class="route-text">Forks → Port Angeles → Hurricane Ridge → Camp</div>
+            </div>
+            <div class="day-meta">
+                <div class="drive-time">🚗 ~3 hrs total</div>
+                <div class="distance">~115 miles</div>
+            </div>
+        </div>
+        <div class="day-body">
+            <div style="margin-bottom:10px;">
+                <span class="tag tag-mountain">⛰️ Mountains</span>
+            </div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">~11:00 AM</div>
+                    <div class="timeline-title">Break Camp — Early Start Recommended</div>
+                    <div class="timeline-desc">Biggest driving day. Leave a bit earlier to maximize ridge time. Forks → Port Angeles via US-101 east (~1.5hrs, scenic along Lake Crescent).</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">12:30 PM</div>
+                    <div class="timeline-title">Lake Crescent — Quick Stop</div>
+                    <div class="timeline-desc">Pull over at the Lake Crescent Lodge viewpoint or Marymere Falls trailhead (0.9mi each way to a 90ft waterfall — optional but stunning).</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">1:30 PM</div>
+                    <div class="timeline-title">Port Angeles — Lunch & Gas</div>
+                    <div class="timeline-desc">Last services before the ridge. Grab lunch downtown (Next Door Gastropub, Kokopelli Grill, or Sabai Thai).</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">2:30 PM</div>
+                    <div class="timeline-title">Drive to Hurricane Ridge (17mi, ~45min)</div>
+                    <div class="timeline-desc">Winding mountain road, gaining 5,200ft. Stop at pullouts for increasingly dramatic views. Entry fee applies (NPS pass).</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">3:15 PM</div>
+                    <div class="timeline-title">Hurricane Ridge Summit (5,242 ft)</div>
+                    <div class="timeline-desc">360° views of Olympic peaks, Strait of Juan de Fuca, and on clear days — Mt. Baker and Vancouver Island. Wildflowers in full bloom mid-June.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">3:30 PM</div>
+                    <div class="timeline-title">Hurricane Hill Trail (3.2mi round trip)</div>
+                    <div class="timeline-desc">Paved-then-dirt trail to the summit with 700ft gain. Best panoramic hike on the peninsula. Marmots, deer, wildflower meadows. Allow 1.5-2 hours. <strong>Sunday access = full trail open.</strong></div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">5:30 PM</div>
+                    <div class="timeline-title">Descend & Find Camp</div>
+                    <div class="timeline-desc">Drive back down toward Port Angeles / Elwha Valley for dispersed options.</div>
+                </div>
+                <div class="timeline-item camp">
+                    <div class="timeline-time">6:30 PM</div>
+                    <div class="timeline-title">Make Camp</div>
+                    <div class="timeline-desc">Dispersed options on forest roads off Elwha Valley or Little River Road. Alternatively, head toward Sequim for DNR dispersed land.</div>
+                </div>
+            </div>
+
+            <div class="camp-box">
+                <h4>🏕️ Night 4 Camp</h4>
+                <div class="primary">Dispersed — FR-2880 / Little River Road area (south of Port Angeles)</div>
+                <div class="backup">Backup: Heart O' the Hills Campground (NPS, first-come, $20/night) — just 5mi up Hurricane Ridge Road</div>
+                <div class="coords">📍 ~48.02, -123.50 (Little River Road area)</div>
+            </div>
+
+            <a class="directions-link" href="https://www.google.com/maps/dir/Forks,+WA/Lake+Crescent+Lodge,+WA/Hurricane+Ridge,+Port+Angeles,+WA" target="_blank">📍 Google Maps: Forks → Crescent → Hurricane Ridge</a>
+        </div>
+    </div>
+
+    <!-- Day 5 -->
+    <div class="day-card">
+        <div class="day-header">
+            <div class="day-number">5</div>
+            <div class="day-title">
+                <h3>Part Ways — Homeward Bound</h3>
+                <div class="route-text">Port Angeles → Seattle (ferry) | Port Angeles → Portland (101/I-5)</div>
+            </div>
+            <div class="day-meta">
+                <div class="drive-time">🚗 SEA: ~2.5hrs | PDX: ~5hrs</div>
+                <div class="distance">Seattle: 85mi / Portland: 295mi</div>
+            </div>
+        </div>
+        <div class="day-body">
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">~9:00 AM</div>
+                    <div class="timeline-title">Break Camp — Morning Coffee & Goodbyes</div>
+                    <div class="timeline-desc">No rush. Relaxed morning. Pack up and head into Port Angeles for breakfast if desired.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">10:00 AM</div>
+                    <div class="timeline-title">Split!</div>
+                    <div class="timeline-desc">
+                        <strong>Seattle crew:</strong> Drive east to Kingston → Edmonds ferry (runs every 30min, no reservation needed, ~30min crossing). OR Port Angeles → Bainbridge ferry if timing works.<br>
+                        <strong>Portland crew:</strong> US-101 east → south along Hood Canal → Olympia → I-5 south. Scenic and straightforward. Stop in Olympia for lunch to break it up.
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">~12:30 PM</div>
+                    <div class="timeline-title">Seattle Arrival</div>
+                    <div class="timeline-desc">Home by early afternoon via Kingston-Edmonds ferry.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">~3:00 PM</div>
+                    <div class="timeline-title">Portland Arrival</div>
+                    <div class="timeline-desc">Home by mid-afternoon via I-5 south.</div>
+                </div>
+            </div>
+
+            <a class="directions-link" href="https://www.google.com/maps/dir/Port+Angeles,+WA/Kingston+Ferry+Terminal,+WA/Seattle,+WA" target="_blank">📍 Seattle Route</a>
+            <a class="directions-link" href="https://www.google.com/maps/dir/Port+Angeles,+WA/Olympia,+WA/Portland,+OR" target="_blank">📍 Portland Route</a>
+        </div>
+    </div>
+
+    <div class="notes-box">
+        <h4>⚠️ Option A Notes</h4>
+        <ul style="padding-left:20px; margin-top:8px;">
+            <li>Hurricane Ridge day is <strong>Sunday</strong> — Hurricane Hill spur fully open (closed Mon-Thu for construction)</li>
+            <li>Portland crew has a ~5hr drive home on Day 5. Consider leaving earlier or breaking the drive in Olympia.</li>
+            <li>Two nights at FS-29 means less setup/breakdown — more relaxation time</li>
+            <li>Check tides for Rialto Beach / Hole-in-the-Wall (need mid-low tide to pass)</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ==================== OPTION B ==================== -->
+<div class="tab-content" id="optionB">
+    <h2 style="color:#34e89e; margin-bottom:5px;">Option B — Mountains → Rainforest → Ocean</h2>
+    <p style="color:#aaa; margin-bottom:25px;">Clockwise loop. Meet at Hood Canal, end at Quinault. Builds anticipation — save the dramatic coast for the finale.</p>
+
+    <div class="route-overview">
+        <div class="route-stat"><label>Total Driving</label><div class="value">~9 hours over 4 days</div></div>
+        <div class="route-stat"><label>Total Distance</label><div class="value">~340 miles (loop)</div></div>
+        <div class="route-stat"><label>Max Single Day</label><div class="value">~3 hrs (Day 2)</div></div>
+        <div class="route-stat"><label>Dispersed Sites</label><div class="value">4 nights, 4 areas</div></div>
+    </div>
+
+    <div class="map-container" id="mapB"></div>
+
+    <!-- Day 1 -->
+    <div class="day-card">
+        <div class="day-header">
+            <div class="day-number">1</div>
+            <div class="day-title">
+                <h3>Converge on Hood Canal — Staircase</h3>
+                <div class="route-text">Seattle → Hoodsport | Portland → Hoodsport</div>
+            </div>
+            <div class="day-meta">
+                <div class="drive-time">🚗 ~2.5–3 hrs</div>
+                <div class="distance">Seattle: 100mi / Portland: 155mi</div>
+            </div>
+        </div>
+        <div class="day-body">
+            <div style="margin-bottom:10px;">
+                <span class="tag tag-mountain">⛰️ Mountains</span>
+                <span class="tag tag-forest">🌲 Forest</span>
+            </div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">~Noon</div>
+                    <div class="timeline-title">Depart</div>
+                    <div class="timeline-desc">Seattle via Tacoma → Hwy 3 → Hwy 101 south to Hoodsport. Portland via I-5 north → Olympia → US-101 north to Hoodsport.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">~2:30 PM</div>
+                    <div class="timeline-title">Arrive Hoodsport — Meet Up</div>
+                    <div class="timeline-desc">Quick stop for gas, ice, and supplies at Hoodsport. Last services before heading into the forest.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">3:00 PM</div>
+                    <div class="timeline-title">Option: Staircase Rapids Loop (2mi)</div>
+                    <div class="timeline-desc">Drive up Lake Cushman Road to Staircase entrance (~20min). Easy riverside loop through old-growth forest. Crystal-clear North Fork Skokomish River. NPS entry fee.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">4:30 PM</div>
+                    <div class="timeline-title">Option: Lake Cushman Viewpoint</div>
+                    <div class="timeline-desc">Turquoise glacial lake surrounded by peaks. Great for photos and a quick dip if feeling brave (cold!).</div>
+                </div>
+                <div class="timeline-item camp">
+                    <div class="timeline-time">5:30 PM</div>
+                    <div class="timeline-title">Make Camp — Hamma Hamma</div>
+                    <div class="timeline-desc">Head back to US-101, then north to FR-25 (Hamma Hamma Road). Dispersed pulloffs along the river within first 3 miles. Mountain views, river access.</div>
+                </div>
+            </div>
+
+            <div class="camp-box">
+                <h4>🏕️ Night 1 Camp</h4>
+                <div class="primary">Dispersed — Forest Road 25 (Hamma Hamma River)</div>
+                <div class="backup">Backup: Hamma Hamma Campground (USFS, first-come, $15/night)</div>
+                <div class="coords">📍 ~47.60, -123.13 (FR-25 pulloffs, first 3mi)</div>
+            </div>
+
+            <a class="directions-link" href="https://www.google.com/maps/dir/Seattle,+WA/Hoodsport,+WA" target="_blank">📍 Seattle → Hoodsport</a>
+            <a class="directions-link" href="https://www.google.com/maps/dir/Portland,+OR/Hoodsport,+WA" target="_blank">📍 Portland → Hoodsport</a>
+        </div>
+    </div>
+
+    <!-- Day 2 -->
+    <div class="day-card">
+        <div class="day-header">
+            <div class="day-number">2</div>
+            <div class="day-title">
+                <h3>Hurricane Ridge — Summit Day</h3>
+                <div class="route-text">Hoodsport → Port Angeles → Hurricane Ridge</div>
+            </div>
+            <div class="day-meta">
+                <div class="drive-time">🚗 ~3 hrs total</div>
+                <div class="distance">~110 miles</div>
+            </div>
+        </div>
+        <div class="day-body">
+            <div style="margin-bottom:10px;">
+                <span class="tag tag-mountain">⛰️ Mountains</span>
+            </div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">~11:00 AM</div>
+                    <div class="timeline-title">Break Camp — Head North</div>
+                    <div class="timeline-desc">US-101 north along Hood Canal. Beautiful waterfront drive. ~2hrs to Port Angeles.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">1:00 PM</div>
+                    <div class="timeline-title">Port Angeles — Lunch</div>
+                    <div class="timeline-desc">Fuel up (food and gas). Downtown has solid options: Next Door Gastropub, Toga's Soup House, New Day Eatery.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">2:00 PM</div>
+                    <div class="timeline-title">Hurricane Ridge Road (45min ascent)</div>
+                    <div class="timeline-desc">Climbing from sea level to 5,242ft. Multiple pullouts with increasingly epic views. Keep eyes peeled for deer on the road.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">2:45 PM</div>
+                    <div class="timeline-title">Hurricane Ridge Summit</div>
+                    <div class="timeline-desc">Panoramic views. Olympic peaks (including Mt. Olympus on clear days), Strait of Juan de Fuca, wildflower meadows. Visit the visitor area (temporary facilities — original lodge burned 2023).</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">3:00 PM</div>
+                    <div class="timeline-title">Hurricane Hill Trail (3.2mi RT, 700ft gain)</div>
+                    <div class="timeline-desc">The premier ridge hike. Paved at first, then dirt to a 360° summit. <strong>Friday = full access</strong> (spur closed Mon-Thu for construction). Marmots everywhere. 1.5-2hrs.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">5:00 PM</div>
+                    <div class="timeline-title">Optional: Sunrise Ridge or Klahhane Ridge</div>
+                    <div class="timeline-desc">If energy remains, short walks along the ridge offer different vantage points. Or just sit and take it in.</div>
+                </div>
+                <div class="timeline-item camp">
+                    <div class="timeline-time">6:30 PM</div>
+                    <div class="timeline-title">Descend & Make Camp</div>
+                    <div class="timeline-desc">Options near Port Angeles: Little River Road dispersed, or Elwha Valley forest roads. South of town on less-traveled forest roads.</div>
+                </div>
+            </div>
+
+            <div class="camp-box">
+                <h4>🏕️ Night 2 Camp</h4>
+                <div class="primary">Dispersed — Little River Road / FR-2880 (south of Port Angeles)</div>
+                <div class="backup">Backup: Heart O' the Hills CG (NPS, first-come, $20) — just 5mi up Hurricane Ridge Road</div>
+                <div class="coords">📍 ~48.02, -123.50</div>
+            </div>
+
+            <a class="directions-link" href="https://www.google.com/maps/dir/Hoodsport,+WA/Port+Angeles,+WA/Hurricane+Ridge+Visitor+Center,+WA" target="_blank">📍 Google Maps: Hoodsport → PA → Hurricane Ridge</a>
+        </div>
+    </div>
+
+    <!-- Day 3 -->
+    <div class="day-card">
+        <div class="day-header">
+            <div class="day-number">3</div>
+            <div class="day-title">
+                <h3>Hoh Rainforest — Into the Green</h3>
+                <div class="route-text">Port Angeles → Lake Crescent → Forks → Hoh</div>
+            </div>
+            <div class="day-meta">
+                <div class="drive-time">🚗 ~2.5 hrs total</div>
+                <div class="distance">~95 miles</div>
+            </div>
+        </div>
+        <div class="day-body">
+            <div style="margin-bottom:10px;">
+                <span class="tag tag-forest">🌲 Rainforest</span>
+            </div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">~Noon</div>
+                    <div class="timeline-title">Break Camp — Head West on US-101</div>
+                    <div class="timeline-desc">Scenic drive along Lake Crescent (one of the most beautiful road segments on the peninsula).</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">12:45 PM</div>
+                    <div class="timeline-title">Lake Crescent — Marymere Falls</div>
+                    <div class="timeline-desc"><strong>1.8mi round trip</strong> to a 90ft waterfall through old growth. Easy trail, 45 minutes. Or just admire the impossibly blue lake from the road.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">1:45 PM</div>
+                    <div class="timeline-title">Continue to Forks → Upper Hoh Road</div>
+                    <div class="timeline-desc">Through Forks (gas/supplies if needed) then south on Upper Hoh Road (18mi to visitor center).</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">3:00 PM</div>
+                    <div class="timeline-title">Hoh Rain Forest — Hall of Mosses (0.8mi)</div>
+                    <div class="timeline-desc">THE Olympic Peninsula experience. Dripping moss, cathedral-like groves, absolute silence. Flat loop, 30-45min. NPS entry fee.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">4:00 PM</div>
+                    <div class="timeline-title">Spruce Nature Trail (1.2mi)</div>
+                    <div class="timeline-desc">Riverside loop. Roosevelt elk frequent the meadows — scan the clearings. Ancient Sitka spruce with 20ft+ diameter trunks.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">5:00 PM</div>
+                    <div class="timeline-title">Optional: Hoh River Trail (go as far as you want)</div>
+                    <div class="timeline-desc">The "deep Hoh" trail continues 17mi to the glaciers. Even 1-2mi in offers solitude and increasingly primeval forest.</div>
+                </div>
+                <div class="timeline-item camp">
+                    <div class="timeline-time">6:00 PM</div>
+                    <div class="timeline-title">Make Camp — FS-29</div>
+                    <div class="timeline-desc">Back to US-101 → Forks → FS-29 (Sitkum-Sol Duc Road). ~45min from Hoh VC.</div>
+                </div>
+            </div>
+
+            <div class="camp-box">
+                <h4>🏕️ Night 3 Camp</h4>
+                <div class="primary">Dispersed — FS-29, east of Forks</div>
+                <div class="backup">Backup: Hoh Campground (NPS, first-come, $20) — right at the trailhead if you want to stay in the park</div>
+                <div class="coords">📍 ~47.92, -124.22</div>
+            </div>
+
+            <a class="directions-link" href="https://www.google.com/maps/dir/Port+Angeles,+WA/Lake+Crescent+Lodge,+WA/Hoh+Rain+Forest+Visitor+Center,+WA" target="_blank">📍 Google Maps: PA → Crescent → Hoh</a>
+        </div>
+    </div>
+
+    <!-- Day 4 -->
+    <div class="day-card">
+        <div class="day-header">
+            <div class="day-number">4</div>
+            <div class="day-title">
+                <h3>Pacific Coast — Rialto to Kalaloch</h3>
+                <div class="route-text">Forks → Rialto Beach → Ruby Beach → Kalaloch → Quinault</div>
+            </div>
+            <div class="day-meta">
+                <div class="drive-time">🚗 ~2.5 hrs total</div>
+                <div class="distance">~90 miles</div>
+            </div>
+        </div>
+        <div class="day-body">
+            <div style="margin-bottom:10px;">
+                <span class="tag tag-ocean">🌊 Ocean</span>
+            </div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">~11:00 AM</div>
+                    <div class="timeline-title">Break Camp — Head to Rialto Beach</div>
+                    <div class="timeline-desc">Early-ish start to maximize beach time. Rialto is ~30min from FS-29 via La Push Road.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">11:30 AM</div>
+                    <div class="timeline-title">Rialto Beach → Hole-in-the-Wall</div>
+                    <div class="timeline-desc"><strong>3mi round trip beach hike.</strong> Massive driftwood, sea stacks, crashing Pacific surf. Hole-in-the-Wall arch visible at mid-low tide. Check tide tables! Allow 2 hours.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">1:30 PM</div>
+                    <div class="timeline-title">Drive South on US-101 — Beach Hopping</div>
+                    <div class="timeline-desc">Back through Forks and south on 101. Pull over at any beach access that catches your eye.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">2:30 PM</div>
+                    <div class="timeline-title">Ruby Beach</div>
+                    <div class="timeline-desc">Most iconic beach on the peninsula. Sea stacks, Abbey Island, thundering waves. Easy access (0.2mi trail). Spend an hour.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">3:30 PM</div>
+                    <div class="timeline-title">Beach 4 / Kalaloch</div>
+                    <div class="timeline-desc">Tide pools at low tide. Kalaloch Lodge area has beach access and restrooms. Look for the "Tree of Life" (tree root cave) just north of Kalaloch Lodge.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">4:30 PM</div>
+                    <div class="timeline-title">Continue to Quinault</div>
+                    <div class="timeline-desc">~45min south to the Lake Quinault area. Optional stop at Quinault Rain Forest loops if you want more green.</div>
+                </div>
+                <div class="timeline-item camp">
+                    <div class="timeline-time">5:30 PM</div>
+                    <div class="timeline-title">Make Camp — South Shore Road</div>
+                    <div class="timeline-desc">Dispersed pulloffs along South Shore Road / NF-2292 past Gatton Creek. River-adjacent, quiet.</div>
+                </div>
+            </div>
+
+            <div class="camp-box">
+                <h4>🏕️ Night 4 Camp</h4>
+                <div class="primary">Dispersed — South Shore Road / NF-2292 (near Quinault)</div>
+                <div class="backup">Backup: Kalaloch Campground (NPS, reservable) or Gatton Creek CG (first-come, $20)</div>
+                <div class="coords">📍 ~47.455, -123.735</div>
+            </div>
+
+            <a class="directions-link" href="https://www.google.com/maps/dir/Forks,+WA/Rialto+Beach,+WA/Ruby+Beach,+WA/Kalaloch+Lodge,+WA/Lake+Quinault,+WA" target="_blank">📍 Google Maps: Full Coast Day Route</a>
+        </div>
+    </div>
+
+    <!-- Day 5 -->
+    <div class="day-card">
+        <div class="day-header">
+            <div class="day-number">5</div>
+            <div class="day-title">
+                <h3>Part Ways — Easy Split</h3>
+                <div class="route-text">Quinault → Seattle (north) | Quinault → Portland (south)</div>
+            </div>
+            <div class="day-meta">
+                <div class="drive-time">🚗 SEA: ~3hrs | PDX: ~3.5hrs</div>
+                <div class="distance">Seattle: 140mi / Portland: 170mi</div>
+            </div>
+        </div>
+        <div class="day-body">
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">~9:00 AM</div>
+                    <div class="timeline-title">Break Camp — Final Morning</div>
+                    <div class="timeline-desc">Relaxed morning. Optional dawn walk through the rain forest one more time.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">10:00 AM</div>
+                    <div class="timeline-title">Split at Amanda Park / US-101</div>
+                    <div class="timeline-desc">
+                        <strong>Seattle crew:</strong> US-101 south to Olympia → I-5 north (~3hrs). Or cut north via Lake Quinault → Hoquiam → US-12 east if you prefer variety.<br>
+                        <strong>Portland crew:</strong> US-101 south → I-5 south at Olympia (~3.5hrs). Easy, familiar drive.
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">~1:00 PM</div>
+                    <div class="timeline-title">Both Groups Home</div>
+                    <div class="timeline-desc">Balanced ~3-3.5hr drives for everyone. Home by early afternoon with time to unpack and rest.</div>
+                </div>
+            </div>
+
+            <a class="directions-link" href="https://www.google.com/maps/dir/Lake+Quinault,+WA/Seattle,+WA" target="_blank">📍 Seattle Route</a>
+            <a class="directions-link" href="https://www.google.com/maps/dir/Lake+Quinault,+WA/Portland,+OR" target="_blank">📍 Portland Route</a>
+        </div>
+    </div>
+
+    <div class="notes-box">
+        <h4>⚠️ Option B Notes</h4>
+        <ul style="padding-left:20px; margin-top:8px;">
+            <li>Hurricane Ridge on <strong>Friday</strong> — full access including Hurricane Hill spur</li>
+            <li><strong>Balanced departure</strong> — both groups have ~3-3.5hr drives home from Quinault. Much more equitable than Option A.</li>
+            <li>Save the coast for Day 4 — builds anticipation, and the ocean is a dramatic finale</li>
+            <li>Four different camp areas = more variety but more setup/breakdown</li>
+            <li>Rialto Beach earlier start on Day 4 (11am) — check tide tables in advance for Hole-in-the-Wall access</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ==================== SHARED INFO ==================== -->
+<div class="gear-section">
+    <h2>🎒 Overland Lite — Packing Essentials</h2>
+    <div class="gear-grid">
+        <div class="gear-category">
+            <h4>🏕️ Camp</h4>
+            <ul>
+                <li>Tent + ground tarp (rain likely!)</li>
+                <li>Sleeping bag (rated 35-40°F for June)</li>
+                <li>Sleeping pad</li>
+                <li>Camp chairs</li>
+                <li>Headlamp + lantern</li>
+                <li>Fire pan or camp stove (check burn ban status)</li>
+                <li>Firewood (buy at ranger stations, don't forage)</li>
+                <li>5-gal water jug (no potable water at dispersed sites)</li>
+                <li>Trowel + WAG bags (Leave No Trace)</li>
+            </ul>
+        </div>
+        <div class="gear-category">
+            <h4>🚗 Vehicle</h4>
+            <ul>
+                <li>Full tank leaving town (gas sparse on peninsula)</li>
+                <li>Recovery boards or traction mats (forest roads)</li>
+                <li>Tire repair kit + compressor</li>
+                <li>Offline maps downloaded (Gaia GPS / OnX)</li>
+                <li>Paper USFS Motor Vehicle Use Map (MVUM)</li>
+                <li>Basic tools + tow strap</li>
+                <li>Extra fuel (2-gal can) if doing back roads</li>
+            </ul>
+        </div>
+        <div class="gear-category">
+            <h4>🥾 Hike & Explore</h4>
+            <ul>
+                <li>Rain jacket (June is still showery)</li>
+                <li>Layers (50s-70s range, colder at elevation)</li>
+                <li>Waterproof hiking boots or trail runners</li>
+                <li>Daypack with water + snacks</li>
+                <li>Tide table printout (for beach access)</li>
+                <li>Binoculars (whale watching, wildlife)</li>
+                <li>Camera (sea stacks demand it)</li>
+            </ul>
+        </div>
+        <div class="gear-category">
+            <h4>📋 Admin</h4>
+            <ul>
+                <li>National Parks Pass ($35 vehicle or $80 annual)</li>
+                <li>Discover Pass for WA state parks ($35/year)</li>
+                <li>Cash (some campgrounds are cash-only)</li>
+                <li>Cell: No service in most locations — plan meetups in advance</li>
+                <li>FRS/GMRS radios for convoy communication</li>
+                <li>Check fire restrictions: <a href="https://www.fs.usda.gov/olympic" target="_blank" style="color:#34e89e;">USFS Olympic</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Comparison Table -->
+<div class="gear-section" style="margin-top:25px;">
+    <h2>⚖️ Quick Comparison</h2>
+    <table style="width:100%; border-collapse:collapse; margin-top:15px;">
+        <thead>
+            <tr style="border-bottom:2px solid #34e89e44;">
+                <th style="text-align:left; padding:12px; color:#34e89e;">Criteria</th>
+                <th style="text-align:center; padding:12px; color:#fff;">Option A (CCW)</th>
+                <th style="text-align:center; padding:12px; color:#fff;">Option B (CW)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="border-bottom:1px solid #ffffff11;">
+                <td style="padding:10px; color:#aaa;">Day 5 drive equity</td>
+                <td style="padding:10px; text-align:center; color:#f39c12;">⚠️ Unbalanced (PDX: 5hrs)</td>
+                <td style="padding:10px; text-align:center; color:#34e89e;">✅ Balanced (~3.5hrs each)</td>
+            </tr>
+            <tr style="border-bottom:1px solid #ffffff11;">
+                <td style="padding:10px; color:#aaa;">Hurricane Ridge day</td>
+                <td style="padding:10px; text-align:center; color:#fff;">Sunday (full access)</td>
+                <td style="padding:10px; text-align:center; color:#fff;">Friday (full access)</td>
+            </tr>
+            <tr style="border-bottom:1px solid #ffffff11;">
+                <td style="padding:10px; color:#aaa;">Camp variety</td>
+                <td style="padding:10px; text-align:center; color:#fff;">3 sites (2 nights at FS-29)</td>
+                <td style="padding:10px; text-align:center; color:#fff;">4 different sites</td>
+            </tr>
+            <tr style="border-bottom:1px solid #ffffff11;">
+                <td style="padding:10px; color:#aaa;">Setup/breakdown effort</td>
+                <td style="padding:10px; text-align:center; color:#34e89e;">✅ Less (2-night base camp)</td>
+                <td style="padding:10px; text-align:center; color:#f39c12;">⚠️ More (move daily)</td>
+            </tr>
+            <tr style="border-bottom:1px solid #ffffff11;">
+                <td style="padding:10px; color:#aaa;">Trip arc / story</td>
+                <td style="padding:10px; text-align:center; color:#fff;">Green → Blue → White</td>
+                <td style="padding:10px; text-align:center; color:#fff;">White → Green → Blue (finale)</td>
+            </tr>
+            <tr style="border-bottom:1px solid #ffffff11;">
+                <td style="padding:10px; color:#aaa;">Max daily driving</td>
+                <td style="padding:10px; text-align:center; color:#fff;">~3 hrs (Day 4)</td>
+                <td style="padding:10px; text-align:center; color:#fff;">~3 hrs (Day 2)</td>
+            </tr>
+            <tr>
+                <td style="padding:10px; color:#aaa;">Day 1 meetup ease</td>
+                <td style="padding:10px; text-align:center; color:#fff;">~3.5hrs each</td>
+                <td style="padding:10px; text-align:center; color:#34e89e;">✅ ~2.5-3hrs each</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+</div> <!-- end container -->
+
+<!-- ==================== MAPS (Leaflet) ==================== -->
+<script>
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.target.classList.add('active');
+    // Invalidate map size after tab switch
+    setTimeout(() => {
+        if (tabId === 'optionA' && window.mapA) window.mapA.invalidateSize();
+        if (tabId === 'optionB' && window.mapB) window.mapB.invalidateSize();
+    }, 100);
+}
+
+// Wait for DOM
+document.addEventListener('DOMContentLoaded', function() {
+
+    // ===== MAP A: Counter-Clockwise =====
+    var mapA = L.map('mapA').setView([47.75, -123.8], 8);
+    window.mapA = mapA;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(mapA);
+
+    var routeA = [
+        [47.4530, -123.8450],  // Quinault
+        [47.6150, -124.3560],  // Ruby Beach
+        [47.9420, -124.3850],  // Forks
+        [47.8600, -123.9340],  // Hoh
+        [47.9420, -124.3850],  // Back to Forks
+        [47.9170, -124.6380],  // Rialto
+        [47.9420, -124.3850],  // Back to Forks
+        [48.0975, -123.4983],  // Hurricane Ridge
+        [48.1185, -123.4308],  // Port Angeles
+    ];
+
+    L.polyline(routeA, {color: '#34e89e', weight: 3, opacity: 0.7, dashArray: '10,6'}).addTo(mapA);
+
+    // Markers
+    var greenIcon = L.divIcon({className: '', html: '<div style="background:#34e89e;color:#0f3443;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);">1</div>'});
+    var blueIcon = L.divIcon({className: '', html: '<div style="background:#4fc3f7;color:#0f3443;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);">2</div>'});
+    var tealIcon = L.divIcon({className: '', html: '<div style="background:#26a69a;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);">3</div>'});
+    var purpIcon = L.divIcon({className: '', html: '<div style="background:#9fa8da;color:#0f3443;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);">4</div>'});
+    var redIcon = L.divIcon({className: '', html: '<div style="background:#ef5350;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);">5</div>'});
+
+    L.marker([47.4530, -123.8450], {icon: greenIcon}).addTo(mapA).bindPopup('<b>Night 1:</b> Quinault — South Shore Rd dispersed');
+    L.marker([47.9420, -124.3850], {icon: blueIcon}).addTo(mapA).bindPopup('<b>Nights 2-3:</b> FS-29, east of Forks');
+    L.marker([48.0975, -123.4983], {icon: purpIcon}).addTo(mapA).bindPopup('<b>Night 4:</b> Near Port Angeles — Little River Rd');
+    L.marker([48.1185, -123.4308], {icon: redIcon}).addTo(mapA).bindPopup('<b>Day 5:</b> Split from Port Angeles');
+
+    // POI markers (smaller)
+    var poiIcon = function(emoji) { return L.divIcon({className: '', html: '<div style="font-size:18px;">' + emoji + '</div>', iconSize: [22,22]}); };
+    L.marker([47.6150, -124.3560], {icon: poiIcon('🌊')}).addTo(mapA).bindPopup('Ruby Beach');
+    L.marker([47.8600, -123.9340], {icon: poiIcon('🌲')}).addTo(mapA).bindPopup('Hoh Rain Forest');
+    L.marker([47.9170, -124.6380], {icon: poiIcon('🌊')}).addTo(mapA).bindPopup('Rialto Beach');
+    L.marker([47.7860, -124.2510], {icon: poiIcon('🌊')}).addTo(mapA).bindPopup('Kalaloch / Beach 4');
+
+    // ===== MAP B: Clockwise =====
+    var mapB = L.map('mapB').setView([47.75, -123.8], 8);
+    window.mapB = mapB;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(mapB);
+
+    var routeB = [
+        [47.4017, -123.1425],  // Hoodsport
+        [47.5980, -123.1300],  // Hamma Hamma
+        [48.1185, -123.4308],  // Port Angeles
+        [48.0975, -123.4983],  // Hurricane Ridge
+        [48.0540, -123.8010],  // Lake Crescent
+        [47.8600, -123.9340],  // Hoh
+        [47.9420, -124.3850],  // Forks
+        [47.9170, -124.6380],  // Rialto
+        [47.6150, -124.3560],  // Ruby Beach
+        [47.4530, -123.8450],  // Quinault
+    ];
+
+    L.polyline(routeB, {color: '#9fa8da', weight: 3, opacity: 0.7, dashArray: '10,6'}).addTo(mapB);
+
+    L.marker([47.5980, -123.1300], {icon: greenIcon}).addTo(mapB).bindPopup('<b>Night 1:</b> Hamma Hamma FR-25');
+    L.marker([48.02, -123.50], {icon: blueIcon}).addTo(mapB).bindPopup('<b>Night 2:</b> Little River Rd (near PA)');
+    L.marker([47.9420, -124.3850], {icon: tealIcon}).addTo(mapB).bindPopup('<b>Night 3:</b> FS-29, east of Forks');
+    L.marker([47.4530, -123.8450], {icon: purpIcon}).addTo(mapB).bindPopup('<b>Night 4:</b> Quinault — South Shore Rd');
+    L.marker([47.4530, -123.7800], {icon: redIcon}).addTo(mapB).bindPopup('<b>Day 5:</b> Split from Quinault/Amanda Park');
+
+    // POI markers
+    L.marker([48.0975, -123.4983], {icon: poiIcon('⛰️')}).addTo(mapB).bindPopup('Hurricane Ridge');
+    L.marker([48.0540, -123.8010], {icon: poiIcon('💧')}).addTo(mapB).bindPopup('Lake Crescent');
+    L.marker([47.8600, -123.9340], {icon: poiIcon('🌲')}).addTo(mapB).bindPopup('Hoh Rain Forest');
+    L.marker([47.6150, -124.3560], {icon: poiIcon('🌊')}).addTo(mapB).bindPopup('Ruby Beach');
+    L.marker([47.9170, -124.6380], {icon: poiIcon('🌊')}).addTo(mapB).bindPopup('Rialto Beach');
+    L.marker([47.4017, -123.1425], {icon: poiIcon('🏔️')}).addTo(mapB).bindPopup('Hoodsport / Staircase');
+
+});
+</script>
+
+</body>
+</html>
